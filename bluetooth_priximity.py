@@ -13,13 +13,15 @@ import RPi.GPIO as GPIO
 
 
 class bluetooth_scan(threading.Thread):
-    def __init__(self, name, addr, threshold = 3):
+    def __init__(self, name, addr, threshold = 0):
         threading.Thread.__init__(self)
         self.addr = addr
         self.name = name
         self.threshold = threshold
-        self.status = 'away'
-
+        self.status = 'undefined'
+        
+        # Fastest possible time seems to be 2 sec
+        self.sleep_time = 2
         
     def bluetooth_rssi(self):
         # Thanks to https://github.com/dagar/bluetooth-proximity
@@ -32,7 +34,11 @@ class bluetooth_scan(threading.Thread):
         bt_sock = bluetooth.BluetoothSocket(bluetooth.L2CAP)
         bt_sock.settimeout(10)
         result = bt_sock.connect_ex((self.addr, 1))      # PSM 1 - Service Discovery
-
+        
+        if result == 77:
+            # Timeout
+            return None
+        
         try:
             # Get ConnInfo
             reqstr = struct.pack("6sB17s", bt.str2ba(self.addr), bt.ACL_LINK, "\0" * 17)
@@ -89,12 +95,21 @@ class bluetooth_scan(threading.Thread):
                 if self.status != 'home':
                     print datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': ' + self.name  +' is home'
                     self.status = 'home'
+                    self.sleep_time = 2
                 self.open_door()
-            else:
+            elif rssi is None:
                 if self.status != 'away':
                     print datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': ' + self.name + ' is away'
                     self.status = 'away'
-            time.sleep(2)
+                    self.sleep_time = 5
+            else:
+                if self.status != 'not_close_enough':
+                    print datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': ' + self.name + ' is not close enough'
+                    self.status = 'not_close_enough'
+                    self.sleep_time = 2
+                    
+            # If person is not in reach, interval between checks can be extended
+            time.sleep(self.sleep_time)
 
 
             
