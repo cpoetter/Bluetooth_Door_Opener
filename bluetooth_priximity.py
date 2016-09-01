@@ -10,10 +10,12 @@ import time
 import os
 import datetime
 import RPi.GPIO as GPIO
+import httplib, urllib
+import json
 
 
 class bluetooth_scan(threading.Thread):
-    def __init__(self, name, addr, threshold = 0):
+    def __init__(self, name, addr, threshold = 2):
         threading.Thread.__init__(self)
         self.addr = addr
         self.name = name
@@ -35,8 +37,8 @@ class bluetooth_scan(threading.Thread):
         bt_sock.settimeout(10)
         result = bt_sock.connect_ex((self.addr, 1))      # PSM 1 - Service Discovery
         
-        if result == 77:
-            # Timeout
+        if result != 0:
+            # Timeout or other error during connection
             return None
         
         try:
@@ -101,7 +103,7 @@ class bluetooth_scan(threading.Thread):
                 if self.status != 'away':
                     print datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': ' + self.name + ' is away'
                     self.status = 'away'
-                    self.sleep_time = 5
+                    self.sleep_time = 2
             else:
                 if self.status != 'not_close_enough':
                     print datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': ' + self.name + ' is not close enough'
@@ -129,6 +131,7 @@ GPIO.setmode(GPIO.BOARD)
 # set up the GPIO channels, 14 is Ground
 # number 6 and 7 on the right side
 GPIO.setup(12, GPIO.OUT)
+GPIO.setup(11, GPIO.IN)
 
 # set start value
 GPIO.output(12, GPIO.LOW)
@@ -141,7 +144,24 @@ door_status = 'closed'
 # While loop to be able to close python script with Control+C
 while True:
     try:
-        time.sleep(1)
+        
+        if GPIO.input(11):
+            print datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': Doorbell ring'
+            conn = httplib.HTTPSConnection("api.pushover.net:443")
+            conn.request("POST", "/1/messages.json",
+                         urllib.urlencode({"token": "a72ixa4uudncku5wygvnc9vio4342n", "user": "unpgpsea1vvxnk2522otkng3ffoef5", "priority": 0, "sound": "bike", "timestamp": int(time.time()), "title": "Open Door!", "message": "Doorbell ringed.",}), { "Content-type": "application/x-www-form-urlencoded" })
+            # "priority": 2, "retry": 60, "expire": 120,
+            push_response = conn.getresponse()
+            response = json.load(push_response)
+            if response['status'] == 1:
+                print datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': Push successfully send'
+                # On acknowledgment open the door
+            else:
+                print datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': Could not send Push notification'
+            # Do not ring too often
+            time.sleep(2)
+        
+        time.sleep(0.5)
     except KeyboardInterrupt:
         GPIO.cleanup()
         exit()
