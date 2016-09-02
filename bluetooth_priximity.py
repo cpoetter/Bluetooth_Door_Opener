@@ -1,5 +1,18 @@
 #! /usr/bin/env python
 
+#### To use external USB bluetooth dongle #####
+# run once to deactivate internal bluetooth
+# sudo systemctl disable hciuart
+# stays even after reboot
+# in /boot/config.txt add
+# dtoverlay=pi3-disable-bt
+
+# run once to activate internal bluetooth
+# sudo systemctl enable hciuart
+# remove in /boot/config.txt
+# dtoverlay=pi3-disable-bt
+##### #####
+
 import threading
 import fcntl
 import struct
