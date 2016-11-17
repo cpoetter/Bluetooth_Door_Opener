@@ -1,0 +1,61 @@
+#!/bin/bash
+
+#Parameter:
+device=$1
+name=$2
+device_number=$3
+
+if [ -z "$device" ]; then
+    echo 'No device address given'
+else
+
+    if [ -z "$name" ]; then
+        echo 'No device name given'
+    else
+
+        if [ -z "$device_number" ]; then
+            echo 'No device number given'
+        else
+
+            # define global variables
+            status="undefined"
+
+            echo 'Start scan for ' $name
+
+            #Command loop:
+            while [ 1 ]; do
+                timestamp=`date`
+
+                btstatus=$(hcitool rssi $device  2>&1)
+
+                if [[ $btstatus == *"Not connected"* ]]; then
+
+                    if [[ $status != *"away"* ]]; then
+                        echo $timestamp': ' $name ' out of reach'
+                        status="away"
+                    fi
+
+                    # If device is not connectd jet/new in range, attempt connection
+                    sudo rfcomm connect $device_number $device 1 2> /dev/null >/dev/null &
+                    sleep 1
+
+                    rssi=0
+
+                elif [[ $btstatus == *"RSSI return value"* ]]; then
+                    # Device is connected
+
+                    if [[ $status != *"in_reach"* ]]; then
+                        echo $timestamp': ' $name ' in  reach'
+                        status="in_reach"
+                    fi
+  
+                    rssi=$(echo $btstatus | sed -e 's/RSSI return value: //g')
+                fi
+
+                echo $rssi > "/home/pi/Bluetooth_Door_Opener/$name"
+
+                sleep 1
+            done
+        fi
+    fi
+fi
