@@ -56,7 +56,36 @@ else
 
                         btstatus=$(hcitool rssi $device  2>&1)
 
-                        if [[ $btstatus == *"Not connected"* ]]; then
+                        homekit=$(cat /home/pi/Bluetooth_Door_Opener/homekit.status)
+
+                        if [[ $homekit == *"1"* ]]; then
+
+                            if [[ $status != *"apple"* ]]; then
+                                echo $timestamp': '  $name ' activated homekit'
+                                status="apple"
+                            fi
+
+                            # Open the door
+                            echo $timestamp': Open door for ' $name
+                            sudo su -l root -c 'echo '1' >/sys/class/leds/led0/brightness'
+
+                            # Sets pin 18 to low
+                            sudo su -l root -c 'echo "0" > /sys/class/gpio/gpio18/value'
+
+                            # Time to pass through door
+                            sleep 1
+
+                            # Close door
+                            echo $timestamp': Close door for '$name
+                            sudo su -l root -c 'echo '0' >/sys/class/leds/led0/brightness'
+
+                            # Sets pin 18 to high
+                            sudo su -l root -c 'echo "1" > /sys/class/gpio/gpio18/value'
+
+                            # Time to leave door area
+                            sleep 5
+
+                        elif [[ $btstatus == *"Not connected"* ]]; then
 
                             if [[ $status != *"away"* ]]; then
                                 echo $timestamp': ' $name ' out of reach'
@@ -72,14 +101,14 @@ else
 
                             rssi=$(echo $btstatus | sed -e 's/RSSI return value: //g')
 
-                            #{
-                            #    remote_rssi=`ssh pi@dooropener2.local "cat /home/pi/Bluetooth_Door_Opener/$name"`
-		            #}||{
-                            #    remote_rssi=0
-		            #}
-		
-                            #if [ $rssi -gt $device_border_1 ] && [ $remote_rssi -lt $device_border_2 ]; then
-                            if [ $rssi -gt $device_border_1 ]; then
+                            {
+                                remote_rssi=`ssh pi@dooropener2.local "cat /home/pi/Bluetooth_Door_Opener/$name"`
+		            }||{
+                                remote_rssi=0
+		            }
+
+                            if [ $rssi -gt $device_border_1 ] && [ $remote_rssi -lt $device_border_2 ]; then
+                            #if [ $rssi -gt $device_border_1 ]; then
  
                                  if [[ $status != *"home"* ]]; then
                                      echo $timestamp': '  $name ' is home'

@@ -28,7 +28,7 @@ import os
 print 'Wait 10 seconds for bluetooth devices to power on'
 time.sleep(10)
             
-bluetooth_addresses = {'Chris': ['9C:F4:8E:26:F0:22', 0, -20], 'Gerd': ['B8:53:AC:61:73:AA', 0, -20], 'Regina': ['98:FE:94:37:67:86', 0, -15]}
+bluetooth_addresses = {'Chris': ['9C:F4:8E:26:F0:22', -1, -22], 'Gerd': ['B8:53:AC:61:73:AA', -1, -22], 'Regina': ['98:FE:94:37:67:86', -1, -22]}
 
 device_number = 0
 for device_name, device_data in bluetooth_addresses.iteritems():
